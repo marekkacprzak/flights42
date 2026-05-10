@@ -38,11 +38,14 @@ const flightSchema = z.object({
 // Shape mirrors Mastra's tool-result convention (`result: string`) with
 // additive domain fields (`flight`, `code`), so our own returns and Mastra's
 // built-in decline string normalize into the same client type.
+const paymentMethodSchema = z.enum(['creditCard', 'miles']);
+
 const resultSchema = z.union([
   z.object({
     ok: z.literal(true),
     result: z.string(),
     flight: flightSchema,
+    paymentMethod: paymentMethodSchema.optional(),
   }),
   z.object({
     ok: z.literal(false),
@@ -158,6 +161,7 @@ export const bookFlightTool = createTool({
       ok: true as const,
       result: `Booked flight ${flightId} from ${flight.from} to ${flight.to} on ${formatFlightDate(flight.date)}${paymentSuffix}.`,
       flight,
+      paymentMethod: selection,
     };
   },
 });
