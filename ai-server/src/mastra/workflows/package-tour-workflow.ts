@@ -11,7 +11,15 @@ const packageInputSchema = z.object({
   stops: z
     .array(z.string())
     .default([])
-    .describe('Intermediate stop cities in travel order between from and to.'),
+    .describe(
+      'Intermediate stop cities on the OUTBOUND journey, in travel order between from and to.',
+    ),
+  returnStops: z
+    .array(z.string())
+    .default([])
+    .describe(
+      'Intermediate stop cities on the RETURN journey, in travel order between to and from.',
+    ),
   departDate: z
     .string()
     .describe('Planned outbound departure date (ISO 8601, e.g. 2026-05-15).'),
@@ -106,8 +114,8 @@ const findFlightsStep = createStep({
     };
     await emitStepStatus(ctx, 'findFlights', 'started');
 
-    const { from, to, stops } = inputData;
-    const citySequence = [from, ...stops, to, from];
+    const { from, to, stops, returnStops } = inputData;
+    const citySequence = [from, ...stops, to, ...returnStops, from];
     const legPairs = citySequence
       .slice(0, -1)
       .map((city, i) => ({ from: city, to: citySequence[i + 1] }));
@@ -155,7 +163,7 @@ const findHotelsStep = createStep({
     await emitStepStatus(ctx, 'findHotels', 'started');
 
     const init = getInitData<z.infer<typeof packageInputSchema>>();
-    const cities = [...init.stops, init.to];
+    const cities = [...init.stops, init.to, ...init.returnStops];
     const bridge = readBridge(requestContext);
     const agent = mastra.getAgent('hotelAgent');
 
