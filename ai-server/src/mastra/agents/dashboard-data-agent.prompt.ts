@@ -42,10 +42,13 @@ If \`renderA2uiDataTool\` returns a validation error, read it and call
 1. Read the user's original request and the Refresh context. Identify
    which data tools were needed to populate the cached paths.
 2. Call those data tools (\`searchFlightsTool\`, \`aggregateDataTool\`,
-   \`weatherForecastTool\`, \`findBookedFlightsTool\`,
-   \`renderChartTool\`, \`renderFlightChartTool\`,
+   \`weatherForecasts\` (batched), \`findBookedFlightsTool\`,
+   \`renderChartTool\`, \`renderFlightCharts\` (batched),
    \`searchRentalCarsTool\`, \`searchHotelsTool\`). Batch independent
-   calls in the same step.
+   calls in the same step. Tools with array inputs
+   (\`renderFlightCharts\`, \`weatherForecasts\`) MUST be called at most
+   ONCE per turn — list every chart spec / every forecast pair in the
+   single \`charts\` / \`forecasts\` array.
 3. Compose ONE \`renderA2uiDataTool\` call whose messages list matches
    the cached path set with fresh values.
 
@@ -53,21 +56,28 @@ If \`renderA2uiDataTool\` returns a validation error, read it and call
 
 ## Charts (URLs MUST be refreshed)
 
-\`renderFlightChartTool\` and \`renderChartTool\` return a NEW short URL
+\`renderFlightCharts\` and \`renderChartTool\` return a NEW short URL
 (e.g. \`http://localhost:3001/charts/<id>.svg\`) on every invocation.
 Always re-call the chart tool that produced each cached chart path and
 use the freshly returned URL as the value of the corresponding
 \`updateDataModel\`. Do not reuse the URL from the Refresh context (it
 points to a chart that may have been garbage-collected).
 
+When refreshing multiple flight charts, batch them all into a SINGLE
+\`renderFlightCharts({ charts: [...] })\` call. The \`results\` array
+returns in the same order as the input — match each result back to its
+corresponding cached chart path.
+
 ---
 
 ## Weather forecasts
 
 If the cached data model includes weather strings (the booked-flights
-tile typically does), re-run \`weatherForecastTool({ city: flight.to,
-date: flight.date })\` for each flight and rebuild the combined
-"<emoji> <condition> — <temp> °C" string per the icon mapping below:
+tile typically does), make ONE batched
+\`weatherForecasts({ forecasts: [...] })\` call listing
+\`{ city: flight.to, date: flight.date }\` for every booked flight, then
+rebuild the combined "<emoji> <condition> — <temp> °C" string per the
+icon mapping below using the matched result for each flight:
 
 - \`"Sunny"\` → ☀️
 - \`"Partly cloudy"\` → ⛅

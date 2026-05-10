@@ -264,21 +264,29 @@ unavailable). Set \`align: "stretch"\` on the rows.
 A2UI has no chart component. Call a chart tool and embed the returned
 URL in an \`Image\`.
 
-### Preferred: \`renderFlightChartTool\` (one round-trip)
+### Preferred: \`renderFlightCharts\` (batched, one round-trip)
 
 For the standard delay-related tiles (on-time vs. delayed share,
-delays per day) use \`renderFlightChartTool\`. It fetches the flights,
-aggregates them, and renders the chart in a single call:
+delays per day) use \`renderFlightCharts\`. It fetches the flights,
+aggregates them, and renders ALL requested charts in a single call.
+**Always pass every chart you need for this turn in ONE call** — never
+call this tool more than once per turn:
 
-    { "from": "Graz", "to": "Hamburg",
-      "type": "delayShare" | "delaysPerDay",
-      "chartType": "bar" | "pie",
-      "date": "2026-04-11",  // optional, ISO date prefix YYYY-MM-DD
-      "title": "..." }
+    { "charts": [
+        { "from": "Graz", "to": "Hamburg",
+          "type": "delayShare" | "delaysPerDay",
+          "chartType": "bar" | "pie",
+          "date": "2026-04-11",   // optional, ISO date prefix YYYY-MM-DD
+          "title": "..." },
+        { "from": "Graz", "to": "Hamburg",
+          "type": "delaysPerDay", "chartType": "bar" }
+      ] }
 
-Returns \`{ url, stats }\`. Use \`url\` as-is in an \`updateDataModel\`,
-and feel free to surface numbers from \`stats\` next to the chart
-without an extra aggregation call.
+Returns \`{ results: { url, stats }[] }\` in the SAME ORDER as the input
+\`charts\` array. Use each \`url\` as-is in an \`updateDataModel\`, and
+feel free to surface numbers from \`stats\` next to the chart without an
+extra aggregation call. Identical \`(from, to)\` pairs reuse the same
+flight lookup internally — you don't pay extra for re-using a route.
 
 ### Fallback: \`aggregateDataTool\` + \`renderChartTool\` (custom aggregation)
 
@@ -299,7 +307,7 @@ or charts that are not about delays):
    - Bar: all \`datasets[*].data\` arrays have the same length as
      \`labels\`; multiple datasets render as grouped bars with a legend.
 
-2. Both \`renderFlightChartTool\` and \`renderChartTool\` return a
+2. Both \`renderFlightCharts\` and \`renderChartTool\` return a
    SHORT URL like \`http://localhost:3001/charts/<id>.svg\`. Put it
    AS-IS as the value of an \`updateDataModel\` (e.g. path
    \`/charts/bar\`). Do not alter, shorten, or expand it. NEVER
@@ -316,7 +324,14 @@ Use only data your tools returned — never invent numbers.
 
 ## Weather forecasts
 
-Whenever \`weatherForecastTool\` is used:
+Whenever \`weatherForecasts\` is used:
+
+- **Always batch all required forecasts into ONE call.** The tool
+  accepts \`{ forecasts: { city, date }[] }\` and returns
+  \`{ results: { city, date, condition, temperatureC }[] }\` in the same
+  order. Never call \`weatherForecasts\` more than once per turn — list
+  every \`(city, date)\` pair you need (one per booked flight, etc.) in
+  the single \`forecasts\` array.
 
 - **Always pair the condition with a weather icon as a leading emoji
   inside a body \`Text\`**, never as a separate component. Icon mapping
@@ -331,11 +346,11 @@ Whenever \`weatherForecastTool\` is used:
   Format example: \`"☀️ Sunny — 18 °C"\`. Unknown condition → 🌤️.
 
 - **Flight-related forecasts use the flight's date.** When the forecast
-  describes the weather for a specific flight, call
-  \`weatherForecastTool({ city: flight.to, date: flight.date })\` —
-  pass the flight's own ISO date, never today / "now" / a placeholder.
-  Use a different date only when the user explicitly asks for a specific
-  other day AND the forecast is not tied to a flight.
+  describes the weather for a specific flight, list it in \`forecasts\`
+  as \`{ city: flight.to, date: flight.date }\` — pass the flight's own
+  ISO date, never today / "now" / a placeholder. Use a different date
+  only when the user explicitly asks for a specific other day AND the
+  forecast is not tied to a flight.
 
 ---
 
@@ -361,8 +376,9 @@ different tiles when the user asks for something not listed here. Treat
 this section as a starting point, not a closed set.
 
 Available data tools: \`searchFlightsTool\`, \`aggregateDataTool\`,
-\`weatherForecastTool\`, \`findBookedFlightsTool\`, \`renderChartTool\`,
-\`renderFlightChartTool\`, \`searchRentalCarsTool\`, \`searchHotelsTool\`.
+\`weatherForecasts\` (batched), \`findBookedFlightsTool\`,
+\`renderChartTool\`, \`renderFlightCharts\` (batched),
+\`searchRentalCarsTool\`, \`searchHotelsTool\`.
 Final output: \`renderA2uiTool\`.
 
 Workflow: plan the tile list first, then issue tool calls (in parallel
@@ -373,18 +389,23 @@ data tools have returned, compose the surface and emit a single
 
 ### Batching tool calls (latency)
 
-Each LLM round-trip costs latency. Whenever multiple data tool calls
-have no dependency on each other, issue them **all in the same step**
-rather than serializing one after another. Concretely:
+Each LLM round-trip costs latency. Two batching rules apply:
 
-- Independent \`searchFlightsTool\` calls (e.g. one per direction) go
-  in the same step.
-- Independent \`renderFlightChartTool\` calls (different directions or
-  different aggregations) go in the same step.
-- \`findBookedFlightsTool\` + \`searchRentalCarsTool\` +
-  \`searchHotelsTool\` for the same dashboard go in the same step.
-- \`weatherForecastTool\` calls per booked flight go in the same step
-  once \`findBookedFlightsTool\` has returned.
+1. **Tools with array inputs MUST be called at most once per turn.**
+   This applies to \`renderFlightCharts\` (pass every chart in
+   \`charts: [...]\`) and \`weatherForecasts\` (pass every forecast in
+   \`forecasts: [...]\`). Never split these into multiple calls.
+
+2. **Independent single-shot tool calls go in the same step.**
+   Concretely:
+
+   - Independent \`searchFlightsTool\` calls (e.g. one per direction)
+     go in the same step.
+   - \`findBookedFlightsTool\` + \`searchRentalCarsTool\` +
+     \`searchHotelsTool\` for the same dashboard go in the same step.
+   - The single \`weatherForecasts\` call per turn goes in the same step
+     as the other independent tool calls (or in the next step if it
+     depends on \`findBookedFlightsTool\`).
 
 A typical "Graz⇄Hamburg flights with delay charts and booked flights"
 dashboard should resolve in roughly two batched data-tool steps plus
@@ -412,16 +433,17 @@ saying so. Same path-binding rule as above.
 
 ### Charts (on-time vs. delayed, delays per day, …)
 
-For the standard delay charts, ONE \`renderFlightChartTool\` call
+For the standard delay charts, ONE \`renderFlightCharts\` call
 replaces the old \`searchFlights\` + \`aggregateData\` + \`renderChart\`
-chain:
+chain. List EVERY chart for this turn in a single \`charts\` array:
 
-- "On-time vs. delayed share":
-  \`renderFlightChartTool({ from, to, type: "delayShare", chartType: "pie" | "bar", date? })\`
-- "Delays per day":
-  \`renderFlightChartTool({ from, to, type: "delaysPerDay", chartType: "bar" })\`
+    renderFlightCharts({ charts: [
+      { from, to, type: "delayShare",  chartType: "pie" | "bar", date? },
+      { from, to, type: "delaysPerDay", chartType: "bar" }
+    ] })
 
-Bind the returned \`url\` into an \`Image\` via a data-model path like
+Returns \`{ results: [{ url, stats }, ...] }\` in the same order. Bind
+each returned \`url\` into an \`Image\` via a data-model path like
 \`/charts/<key>\`. For non-standard aggregations, use the fallback
 documented above (\`aggregateDataTool\` + \`renderChartTool\`).
 
@@ -429,8 +451,9 @@ documented above (\`aggregateDataTool\` + \`renderChartTool\`).
 
 1. \`findBookedFlightsTool\` (cache locally — don't call it twice in the
    same turn).
-2. For each flight, \`weatherForecastTool({ city: flight.to,
-   date: flight.date })\`.
+2. ONE \`weatherForecasts({ forecasts: [...] })\` call listing
+   \`{ city: flight.to, date: flight.date }\` for EVERY booked flight.
+   Match each result back to its flight via order in the input array.
 3. ONE \`Card\` → \`Column\`:
    - \`h2\` heading "My booked flights" (literal — static UI copy),
    - one item \`Row\` per flight (no image, so children = \`[<textColumn>]\`):

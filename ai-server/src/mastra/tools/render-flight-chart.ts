@@ -55,22 +55,69 @@ function aggregateDelaysPerDay(flights: FlightRecord[]): DelaysPerDayStats {
   return { dates };
 }
 
+const chartSpecSchema = z.object({
+  from: z.string().describe('Departure city, e.g. "Graz".'),
+  to: z.string().describe('Destination city, e.g. "Hamburg".'),
+  type: z
+    .enum(['delayShare', 'delaysPerDay'])
+    .describe('Aggregation mode (see tool description).'),
+  chartType: z.enum(['bar', 'pie']),
+  date: z
+    .string()
+    .optional()
+    .describe(
+      'Optional ISO date prefix (YYYY-MM-DD) to restrict the data to one day.',
+    ),
+  title: z.string().optional().describe('Optional chart title.'),
+});
+
+const chartResultSchema = z.object({
+  url: z.string(),
+  stats: z.union([
+    z.object({
+      mode: z.literal('delayShare'),
+      total: z.number(),
+      onTime: z.number(),
+      delayed: z.number(),
+    }),
+    z.object({
+      mode: z.literal('delaysPerDay'),
+      dates: z.array(
+        z.object({
+          date: z.string(),
+          onTime: z.number(),
+          delayed: z.number(),
+        }),
+      ),
+    }),
+  ]),
+});
+
 export const renderFlightChartTool = createTool({
-  id: 'renderFlightChart',
+  id: 'renderFlightCharts',
   description: [
-    'One-shot helper for the standard delay-related chart tiles on the',
-    'flight dashboard. Combines `searchFlightsTool` + aggregation +',
-    '`renderChartTool` in a single call so the agent does not need three',
-    'separate LLM round-trips per chart.',
+    'Batched one-shot helper for delay-related chart tiles on the flight',
+    'dashboard. Combines `searchFlightsTool` + aggregation +',
+    '`renderChartTool` and renders MULTIPLE charts in a SINGLE call so the',
+    'agent does not need separate LLM round-trips per chart.',
     '',
-    'Modes:',
-    '- `delayShare`: counts on-time vs. delayed flights between the two cities',
-    '  (optionally restricted to a single ISO date prefix). Best with',
-    '  `chartType: "pie"` or `"bar"` — `labels` are `["On time", "Delayed"]`.',
-    '- `delaysPerDay`: groups flights by date and counts on-time vs. delayed per',
-    '  day. Best with `chartType: "bar"` (grouped bars per day).',
+    'Input: `{ charts: ChartSpec[] }`. Always pass ALL charts you need for',
+    'the current turn in one call — never call this tool more than once',
+    'per turn. The internal flight cache deduplicates flight lookups for',
+    'identical `(from, to)` pairs across the array, so listing the same',
+    'route twice (e.g. one `delayShare` + one `delaysPerDay` for Graz⇄HAM)',
+    'does not cost an extra `fetchFlights` round-trip.',
     '',
-    'Returns `{ url, stats }`. Embed `url` verbatim in an A2UI `Image`',
+    'Modes per ChartSpec:',
+    '- `delayShare`: counts on-time vs. delayed flights between the two',
+    '  cities (optionally restricted to a single ISO date prefix). Best',
+    '  with `chartType: "pie"` or `"bar"` — `labels` are',
+    '  `["On time", "Delayed"]`.',
+    '- `delaysPerDay`: groups flights by date and counts on-time vs.',
+    '  delayed per day. Best with `chartType: "bar"` (grouped bars per day).',
+    '',
+    'Returns `{ results: { url, stats }[] }` in the SAME ORDER as the',
+    'input `charts` array. Embed each `url` verbatim in an A2UI `Image`',
     'component (typically via an `updateDataModel` path). `stats` mirrors',
     'the aggregation so the agent can also surface numbers next to the',
     'chart without another aggregation tool call.',
@@ -80,79 +127,73 @@ export const renderFlightChartTool = createTool({
     'fall back to `aggregateDataTool` + `renderChartTool`.',
   ].join('\n'),
   inputSchema: z.object({
-    from: z.string().describe('Departure city, e.g. "Graz".'),
-    to: z.string().describe('Destination city, e.g. "Hamburg".'),
-    type: z
-      .enum(['delayShare', 'delaysPerDay'])
-      .describe('Aggregation mode (see tool description).'),
-    chartType: z.enum(['bar', 'pie']),
-    date: z
-      .string()
-      .optional()
+    charts: z
+      .array(chartSpecSchema)
+      .min(1)
       .describe(
-        'Optional ISO date prefix (YYYY-MM-DD) to restrict the data to one day.',
+        'All flight-chart specs to render in this turn. Pass every chart in ONE call.',
       ),
-    title: z.string().optional().describe('Optional chart title.'),
   }),
   outputSchema: z.object({
-    url: z.string(),
-    stats: z.union([
-      z.object({
-        mode: z.literal('delayShare'),
-        total: z.number(),
-        onTime: z.number(),
-        delayed: z.number(),
-      }),
-      z.object({
-        mode: z.literal('delaysPerDay'),
-        dates: z.array(
-          z.object({
-            date: z.string(),
-            onTime: z.number(),
-            delayed: z.number(),
-          }),
-        ),
-      }),
-    ]),
+    results: z.array(chartResultSchema),
   }),
-  execute: async ({ from, to, type, chartType, date, title }) => {
-    const allFlights = await fetchFlights(from, to);
-    const flights = filterByDate(allFlights, date);
-
-    if (type === 'delayShare') {
-      const share = aggregateDelayShare(flights);
-      const url = buildAndCacheChartUrl({
-        type: chartType,
-        title,
-        labels: ['On time', 'Delayed'],
-        datasets: [{ label: 'Flights', data: [share.onTime, share.delayed] }],
-      });
-      return {
-        url,
-        stats: { mode: 'delayShare' as const, ...share },
-      };
-    }
-
-    const perDay = aggregateDelaysPerDay(flights);
-    const labels = perDay.dates.map((d) => d.date);
-    const onTime = perDay.dates.map((d) => d.onTime);
-    const delayed = perDay.dates.map((d) => d.delayed);
-    const datasets =
-      chartType === 'pie'
-        ? [{ label: 'Delayed', data: delayed }]
-        : [
-            { label: 'On time', data: onTime },
-            { label: 'Delayed', data: delayed },
-          ];
-    const url = buildAndCacheChartUrl({
-      type: chartType,
-      title,
-      labels,
-      datasets,
-    });
-    return {
-      url,
-      stats: { mode: 'delaysPerDay' as const, dates: perDay.dates },
+  execute: async ({ charts }) => {
+    const flightCache = new Map<string, Promise<FlightRecord[]>>();
+    const getFlights = (from: string, to: string): Promise<FlightRecord[]> => {
+      const key = `${from}|${to}`;
+      let pending = flightCache.get(key);
+      if (!pending) {
+        pending = fetchFlights(from, to);
+        flightCache.set(key, pending);
+      }
+      return pending;
     };
+
+    const results = await Promise.all(
+      charts.map(async ({ from, to, type, chartType, date, title }) => {
+        const allFlights = await getFlights(from, to);
+        const flights = filterByDate(allFlights, date);
+
+        if (type === 'delayShare') {
+          const share = aggregateDelayShare(flights);
+          const url = buildAndCacheChartUrl({
+            type: chartType,
+            title,
+            labels: ['On time', 'Delayed'],
+            datasets: [
+              { label: 'Flights', data: [share.onTime, share.delayed] },
+            ],
+          });
+          return {
+            url,
+            stats: { mode: 'delayShare' as const, ...share },
+          };
+        }
+
+        const perDay = aggregateDelaysPerDay(flights);
+        const labels = perDay.dates.map((d) => d.date);
+        const onTime = perDay.dates.map((d) => d.onTime);
+        const delayed = perDay.dates.map((d) => d.delayed);
+        const datasets =
+          chartType === 'pie'
+            ? [{ label: 'Delayed', data: delayed }]
+            : [
+                { label: 'On time', data: onTime },
+                { label: 'Delayed', data: delayed },
+              ];
+        const url = buildAndCacheChartUrl({
+          type: chartType,
+          title,
+          labels,
+          datasets,
+        });
+        return {
+          url,
+          stats: { mode: 'delaysPerDay' as const, dates: perDay.dates },
+        };
+      }),
+    );
+
+    return { results };
   },
 });
