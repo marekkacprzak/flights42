@@ -10,6 +10,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   agUiResource,
   type AgUiToolCall,
+  type AgUiWorkflowStep,
   createShowComponentsTool,
   WidgetContainerComponent,
 } from '@internal/ag-ui-client';
@@ -28,8 +29,6 @@ const DURATION_OPTIONS = [
 ] as const;
 
 const WORKFLOW_STEP_LABELS: Record<string, string> = {
-  packageAgent: 'Consulting package agent',
-  packageTourWorkflow: 'Running workflow',
   findOutboundFlights: 'Searching outbound flights',
   findReturnFlights: 'Searching return flights',
   findHotels: 'Searching hotels',
@@ -62,7 +61,7 @@ export class TravelPlannerPage {
   });
 
   protected readonly chat = agUiResource({
-    url: this.config.agUiUrl,
+    url: `${this.config.aiServerUrl}/ag-ui/travelPlannerAgent`,
     model: this.config.model,
     useServerMemory: false,
     tools: [
@@ -107,21 +106,59 @@ export class TravelPlannerPage {
       .filter((toolCall) => toolCall.name !== 'showComponents'),
   );
 
-  protected readonly currentTool = computed<AgUiToolCall | null>(() => {
-    const calls = this.toolCalls();
-    for (let i = calls.length - 1; i >= 0; i -= 1) {
-      const call = calls[i];
-      if (call.status === 'pending') {
-        return call;
+  /**
+   * Tool calls that don't belong to any workflow step (top-level agent calls
+   * like the `workflow-*` wrapper around the workflow itself). Surfaced as a
+   * small extra section below the step timeline so they aren't lost.
+   */
+  protected readonly topLevelToolCalls = computed<AgUiToolCall[]>(() =>
+    this.toolCalls().filter(
+      (toolCall) =>
+        !toolCall.stepName && !toolCall.name.startsWith('workflow-'),
+    ),
+  );
+
+  protected readonly workflowSteps = computed<AgUiWorkflowStep[]>(() =>
+    this.chat
+      .value()
+      .filter((message) => message.role === 'assistant')
+      .flatMap((message) => message.workflowSteps),
+  );
+
+  protected readonly toolCallsByStep = computed<Map<string, AgUiToolCall[]>>(
+    () => {
+      const map = new Map<string, AgUiToolCall[]>();
+      for (const toolCall of this.toolCalls()) {
+        const key = toolCall.stepName;
+        if (!key) {
+          continue;
+        }
+        const list = map.get(key);
+        if (list) {
+          list.push(toolCall);
+        } else {
+          map.set(key, [toolCall]);
+        }
+      }
+      return map;
+    },
+  );
+
+  protected readonly currentWorkflowStep = computed<string | null>(() => {
+    const steps = this.workflowSteps();
+    for (let i = steps.length - 1; i >= 0; i -= 1) {
+      const step = steps[i];
+      if (step.status === 'pending') {
+        return WORKFLOW_STEP_LABELS[step.name] ?? step.name;
       }
     }
-    return calls.length > 0 ? calls[calls.length - 1] : null;
+    return null;
   });
 
   protected readonly currentStatus = computed<string>(() => {
-    const tool = this.currentTool();
-    if (tool && tool.status === 'pending' && tool.name) {
-      return WORKFLOW_STEP_LABELS[tool.name] ?? `Tool: ${tool.name}`;
+    const step = this.currentWorkflowStep();
+    if (step) {
+      return step;
     }
     if (this.chat.isLoading()) {
       return 'Building travel plan';
@@ -130,14 +167,6 @@ export class TravelPlannerPage {
       return 'Done';
     }
     return 'Ready';
-  });
-
-  protected readonly currentWorkflowStep = computed<string | null>(() => {
-    const tool = this.currentTool();
-    if (!tool || tool.status !== 'pending') {
-      return null;
-    }
-    return WORKFLOW_STEP_LABELS[tool.name] ?? tool.name;
   });
 
   protected readonly showToolDetails = signal(false);
@@ -197,5 +226,13 @@ export class TravelPlannerPage {
 
   protected stepLabel(name: string): string {
     return WORKFLOW_STEP_LABELS[name] ?? name;
+  }
+
+  protected hasWorkflowSteps(): boolean {
+    return this.workflowSteps().length > 0;
+  }
+
+  protected toolCallsFor(stepName: string): AgUiToolCall[] {
+    return this.toolCallsByStep().get(stepName) ?? [];
   }
 }

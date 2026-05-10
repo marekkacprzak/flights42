@@ -187,6 +187,7 @@ export function agUiResource(
           ...userMessage,
           widgets: [],
           toolCalls: [],
+          workflowSteps: [],
         },
       ],
     }));

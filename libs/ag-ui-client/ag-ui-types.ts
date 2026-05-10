@@ -170,6 +170,19 @@ export interface AgUiToolCall {
   status: AgUiToolCallStatus;
   result?: unknown;
   error?: string;
+  /**
+   * Optional: name of the workflow step this tool call was made from. Set by
+   * the server when the call was emitted via the AG-UI bridge from inside a
+   * workflow step. Used by the UI to nest tool calls under their parent step.
+   */
+  stepName?: string;
+}
+
+export type AgUiWorkflowStepStatus = 'pending' | 'complete';
+
+export interface AgUiWorkflowStep {
+  name: string;
+  status: AgUiWorkflowStepStatus;
 }
 
 export interface AgUiChatMessage {
@@ -178,6 +191,7 @@ export interface AgUiChatMessage {
   content: string;
   widgets: AgUiWidgetInstance[];
   toolCalls: AgUiToolCall[];
+  workflowSteps: AgUiWorkflowStep[];
 }
 
 export interface AgUiInterruptPayload {

@@ -7,6 +7,7 @@ import { hotelAgent } from './agents/hotel-agent.js';
 import { packageAgent } from './agents/package-agent.js';
 import { planningAgent } from './agents/planning-agent.js';
 import { ticketingAgent } from './agents/ticketing-agent.js';
+import { travelPlannerAgent } from './agents/travel-planner-agent.js';
 import { agUiRouteHandler } from './routes/ag-ui-route.js';
 import {
   bookFlightHandler,
@@ -16,7 +17,13 @@ import {
 import { packageTourWorkflow } from './workflows/package-tour-workflow.js';
 
 export const mastra = new Mastra({
-  agents: { ticketingAgent, planningAgent, packageAgent, hotelAgent },
+  agents: {
+    ticketingAgent,
+    planningAgent,
+    packageAgent,
+    hotelAgent,
+    travelPlannerAgent,
+  },
   workflows: { packageTourWorkflow },
   storage: new LibSQLStore({
     id: 'flights42-storage',

@@ -15,14 +15,14 @@ export type Hotel = z.infer<typeof hotelSchema>;
 
 const baseHotels = [
   {
-    id: 'biz-hotel',
-    name: 'Biz Hotel',
+    id: 'budget-hotel',
+    name: 'Budget Hotel',
     sterne: 3,
     imageUrl: `${HOTEL_ASSET_BASE_URL}/biz-hotel.svg`,
   },
   {
-    id: 'skyline-suites',
-    name: 'Skyline Suites',
+    id: 'biz-hotel',
+    name: 'Biz Hotel',
     sterne: 4,
     imageUrl: `${HOTEL_ASSET_BASE_URL}/skyline-suites.svg`,
   },

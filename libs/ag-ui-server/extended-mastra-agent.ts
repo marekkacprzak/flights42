@@ -12,6 +12,12 @@ import {
 } from './mcp-apps-registry.js';
 import { Store } from './memory-store.js';
 import { defaultStore } from './memory-store.js';
+import {
+  type AgUiBridge,
+  type AgUiStepEvent,
+  type AgUiToolCallEvent,
+  attachBridge,
+} from './step-bridge.js';
 
 interface ExtendedLocalAgentOptions {
   agentId: string;
@@ -390,6 +396,76 @@ function safeParseJson(value: string): unknown {
   }
 }
 
+function getStringField(value: unknown, ...keys: string[]): string | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  for (const key of keys) {
+    const v = record[key];
+    if (typeof v === 'string' && v.length > 0) {
+      return v;
+    }
+  }
+  return undefined;
+}
+
+interface ParsedStepEvent {
+  kind: 'started' | 'finished';
+  stepName: string;
+  stepCallId: string;
+}
+
+/**
+ * Tries to interpret a Mastra stream chunk as a workflow step boundary event.
+ *
+ * Recognizes both:
+ *  - Mastra's auto-emitted lifecycle chunks (`workflow-step-start`,
+ *    `workflow-step-result`).
+ *  - Our own custom progress chunks emitted via `writer.write({ type:
+ *    'data-step-status', stepName, status })` from inside workflow steps.
+ *
+ * Returns null if the chunk is not a step event we can map to AG-UI.
+ */
+function parseWorkflowStepChunk(chunk: unknown): ParsedStepEvent | null {
+  const record = asRecord(chunk);
+  const type =
+    typeof record?.['type'] === 'string'
+      ? (record['type'] as string)
+      : undefined;
+  if (!type) {
+    return null;
+  }
+  const payload = asRecord(record?.['payload']);
+
+  if (type === 'workflow-step-start') {
+    const stepName =
+      getStringField(payload, 'id', 'stepName') ?? 'workflow-step';
+    const stepCallId = getStringField(payload, 'stepCallId', 'id') ?? stepName;
+    return { kind: 'started', stepName, stepCallId };
+  }
+
+  if (type === 'workflow-step-result') {
+    const stepName =
+      getStringField(payload, 'id', 'stepName') ?? 'workflow-step';
+    const stepCallId = getStringField(payload, 'stepCallId', 'id') ?? stepName;
+    return { kind: 'finished', stepName, stepCallId };
+  }
+
+  if (type === 'data-step-status') {
+    // Custom progress chunk emitted from inside a workflow step via
+    // `writer.write({ type: 'data-step-status', stepName, status })`.
+    const stepName = getStringField(record, 'stepName');
+    const status = getStringField(record, 'status');
+    if (!stepName || (status !== 'started' && status !== 'finished')) {
+      return null;
+    }
+    return { kind: status, stepName, stepCallId: stepName };
+  }
+
+  return null;
+}
+
 export class ExtendedMastraAgent extends AbstractAgent {
   override readonly agentId: string;
   readonly agent: Agent;
@@ -430,6 +506,85 @@ export class ExtendedMastraAgent extends AbstractAgent {
     return new Observable<BaseEvent>((observer) => {
       const initialMessageId = randomUUID();
       const interruptAwareInput = input as InterruptAwareRunAgentInput;
+      // Dedup keyed by stepName: events can arrive via three independent
+      // paths (Mastra `workflow-step-*` chunks, our custom `data-step-status`
+      // chunks, and the per-request RequestContext bridge below). We collapse
+      // all of them onto stepName so each step produces exactly one
+      // STEP_STARTED + STEP_FINISHED on the wire.
+      const startedSteps = new Set<string>();
+      const finishedSteps = new Set<string>();
+
+      const emitStep = (event: AgUiStepEvent): void => {
+        if (event.kind === 'started') {
+          if (startedSteps.has(event.stepName)) {
+            return;
+          }
+          startedSteps.add(event.stepName);
+          observer.next({
+            type: EventType.STEP_STARTED,
+            stepName: event.stepName,
+          } as BaseEvent);
+          return;
+        }
+
+        if (finishedSteps.has(event.stepName)) {
+          return;
+        }
+        finishedSteps.add(event.stepName);
+        observer.next({
+          type: EventType.STEP_FINISHED,
+          stepName: event.stepName,
+        } as BaseEvent);
+      };
+
+      // Bridge-driven tool calls coming from inside workflow steps. Each
+      // call expands into the full AG-UI TOOL_CALL_START / ARGS / END /
+      // (optional) RESULT sequence, with the same `parentMessageId` as the
+      // surrounding assistant message so the UI groups them naturally.
+      const emitBridgeToolCall = (event: AgUiToolCallEvent): void => {
+        const toolCallId = event.toolCallId ?? randomUUID();
+
+        // `stepName` is a custom field on the wire; AG-UI passes unknown
+        // fields through unchanged, and the client picks them up to group
+        // tool calls under their parent workflow step.
+        observer.next({
+          type: EventType.TOOL_CALL_START,
+          parentMessageId: initialMessageId,
+          toolCallId,
+          toolCallName: event.toolName,
+          ...(event.stepName ? { stepName: event.stepName } : {}),
+        } as BaseEvent);
+
+        observer.next({
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId,
+          delta: JSON.stringify(event.args ?? {}),
+        } as BaseEvent);
+
+        observer.next({
+          type: EventType.TOOL_CALL_END,
+          toolCallId,
+        } as BaseEvent);
+
+        if (event.result !== undefined) {
+          observer.next({
+            type: EventType.TOOL_CALL_RESULT,
+            toolCallId,
+            content: JSON.stringify(event.result),
+            messageId: randomUUID(),
+            role: 'tool',
+          } as BaseEvent);
+        }
+      };
+
+      // Per-request bridge: workflow steps push progress AND tool calls
+      // here; this bypasses Mastra's tool-stream pipe entirely and is
+      // isolated per RequestContext.
+      const bridge: AgUiBridge = {
+        emit: emitStep,
+        emitToolCall: emitBridgeToolCall,
+      };
+      attachBridge(this.requestContext, bridge);
 
       const startedEvent: BaseEvent = {
         type: EventType.RUN_STARTED,
@@ -447,6 +602,9 @@ export class ExtendedMastraAgent extends AbstractAgent {
             delta,
           };
           observer.next(textEvent);
+        },
+        onWorkflowStep: ({ kind, stepName }) => {
+          emitStep({ stepName, kind });
         },
         onToolCallPart: ({ toolCallId, toolName, args }) => {
           const startEvent: BaseEvent = {
@@ -535,6 +693,7 @@ export class ExtendedMastraAgent extends AbstractAgent {
     assistantMessageId: string,
     handlers: {
       onTextPart: (delta: string, messageId: string) => void;
+      onWorkflowStep: (event: ParsedStepEvent) => void;
       onToolCallPart: (value: {
         toolCallId: string;
         toolName: string;
@@ -587,6 +746,11 @@ export class ExtendedMastraAgent extends AbstractAgent {
       );
 
       for await (const chunk of stream.fullStream) {
+        const stepEvent = parseWorkflowStepChunk(chunk);
+        if (stepEvent) {
+          handlers.onWorkflowStep(stepEvent);
+          continue;
+        }
         switch ((chunk as { type?: string }).type) {
           case 'text-delta':
           case 'reasoning-delta': {
@@ -758,6 +922,12 @@ export class ExtendedMastraAgent extends AbstractAgent {
     clientTools: Record<string, ClientToolDefinition>,
   ) {
     const interrupt = parseInterruptId(input.resume?.interruptId);
+    // Mastra warns ("No memory is configured but resourceId and threadId were
+    // passed in args") when we hand it memory coordinates for an agent without
+    // a Memory instance — only set them when the agent actually uses memory.
+    const memory = this.agent.hasOwnMemory()
+      ? { thread: input.threadId, resource: this.resourceId }
+      : undefined;
 
     if (interrupt) {
       if (interrupt.kind === 'approval') {
@@ -772,7 +942,7 @@ export class ExtendedMastraAgent extends AbstractAgent {
           return this.agent.approveToolCall({
             runId: interrupt.runId,
             toolCallId: interrupt.toolCallId,
-            memory: { thread: input.threadId, resource: this.resourceId },
+            memory,
             clientTools,
             requestContext: this.requestContext,
             abortSignal: this.abortSignal,
@@ -782,7 +952,7 @@ export class ExtendedMastraAgent extends AbstractAgent {
         return this.agent.declineToolCall({
           runId: interrupt.runId,
           toolCallId: interrupt.toolCallId,
-          memory: { thread: input.threadId, resource: this.resourceId },
+          memory,
           clientTools,
           requestContext: this.requestContext,
           abortSignal: this.abortSignal,
@@ -792,7 +962,7 @@ export class ExtendedMastraAgent extends AbstractAgent {
       return this.agent.resumeStream(input.resume?.payload, {
         runId: interrupt.runId,
         toolCallId: interrupt.toolCallId,
-        memory: { thread: input.threadId, resource: this.resourceId },
+        memory,
         clientTools,
         requestContext: this.requestContext,
         abortSignal: this.abortSignal,
@@ -800,7 +970,7 @@ export class ExtendedMastraAgent extends AbstractAgent {
     }
 
     return this.agent.stream(messages, {
-      memory: { thread: input.threadId, resource: this.resourceId },
+      memory,
       runId: input.runId,
       clientTools,
       requestContext: this.requestContext,

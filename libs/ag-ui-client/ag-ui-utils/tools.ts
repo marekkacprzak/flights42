@@ -78,6 +78,7 @@ export function upsertToolCall(
         content: '',
         widgets: [],
         toolCalls: [toolCall],
+        workflowSteps: [],
       },
     ];
   }

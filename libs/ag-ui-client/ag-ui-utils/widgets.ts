@@ -97,6 +97,7 @@ export function upsertWidgetFromActivitySnapshot(
         content: '',
         widgets: [widget],
         toolCalls: [],
+        workflowSteps: [],
       },
     ];
   }
