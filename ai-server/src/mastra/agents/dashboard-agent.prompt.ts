@@ -264,13 +264,23 @@ unavailable). Set \`align: "stretch"\` on the rows.
 A2UI has no chart component. Call a chart tool and embed the returned
 URL in an \`Image\`.
 
-### Preferred: \`renderFlightChartTool\` (one round-trip)
+### Preferred: \`searchFlightsTool\` + \`renderFlightChartTool\` (two round-trips)
 
 For the standard delay-related tiles (on-time vs. delayed share,
-delays per day) use \`renderFlightChartTool\`. It fetches the flights,
-aggregates them, and renders the chart in a single call:
+delays per day):
 
-    { "from": "Graz", "to": "Hamburg",
+1. \`searchFlightsTool({ from, to })\` — fetch flights once per route.
+   Reuse the returned \`flights\` array for the route's flight tables
+   AND every chart on the same route. Never call it twice for the
+   same \`{ from, to }\` in one turn.
+2. \`renderFlightChartTool({ flights, type, chartType, date?, title? })\`
+   — pass the array from step 1. The tool aggregates and renders the
+   chart in one call, so you do not need \`aggregateDataTool\` /
+   \`renderChartTool\` for these standard tiles.
+
+Argument shape:
+
+    { "flights": [...],   // from searchFlightsTool — reuse, don't refetch
       "type": "delayShare" | "delaysPerDay",
       "chartType": "bar" | "pie",
       "date": "2026-04-11",  // optional, ISO date prefix YYYY-MM-DD
@@ -412,14 +422,14 @@ saying so. Same path-binding rule as above.
 
 ### Charts (on-time vs. delayed, delays per day, …)
 
-For the standard delay charts, ONE \`renderFlightChartTool\` call
-replaces the old \`searchFlights\` + \`aggregateData\` + \`renderChart\`
-chain:
+For the standard delay charts, call \`searchFlightsTool({ from, to })\`
+ONCE per route (reuse the array for tables and every chart on the same
+route) and then one \`renderFlightChartTool\` per chart:
 
 - "On-time vs. delayed share":
-  \`renderFlightChartTool({ from, to, type: "delayShare", chartType: "pie" | "bar", date? })\`
+  \`renderFlightChartTool({ flights, type: "delayShare", chartType: "pie" | "bar", date? })\`
 - "Delays per day":
-  \`renderFlightChartTool({ from, to, type: "delaysPerDay", chartType: "bar" })\`
+  \`renderFlightChartTool({ flights, type: "delaysPerDay", chartType: "bar" })\`
 
 Bind the returned \`url\` into an \`Image\` via a data-model path like
 \`/charts/<key>\`. For non-standard aggregations, use the fallback

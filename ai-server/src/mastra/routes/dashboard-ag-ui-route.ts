@@ -22,7 +22,8 @@ import {
   streamAgentEvents,
 } from './ag-ui-stream.js';
 
-const DASHBOARD_AGENT_ID = 'dashboardAgent';
+const DASHBOARD_FAST_AGENT_ID = 'dashboardAgent';
+const DASHBOARD_SLOW_AGENT_ID = 'dashboardSlowAgent';
 const DASHBOARD_DATA_AGENT_ID = 'dashboardDataAgent';
 
 const DATA_AGENT_INTERNAL_TOOL_NAMES: readonly string[] = [
@@ -43,7 +44,11 @@ export async function dashboardAgUiRouteHandler(
 
   const { input } = parsed;
   const preventCaching = isPreventCachingRequested(input);
-  const cacheKey = computeDashboardRequestHash(input.messages);
+  const multiStepCharts = isMultiStepChartsRequested(input);
+  const cacheKey = computeDashboardRequestHash(
+    input.messages,
+    multiStepCharts ? 'slow' : 'fast',
+  );
 
   if (!preventCaching) {
     const entry = await tryReadDashboardCache(cacheKey);
@@ -60,10 +65,13 @@ export async function dashboardAgUiRouteHandler(
     }
   }
 
+  const agentId = multiStepCharts
+    ? DASHBOARD_SLOW_AGENT_ID
+    : DASHBOARD_FAST_AGENT_ID;
   const agent = getExtendedLocalAgent({
     mastra: mastraInstance,
-    agentId: DASHBOARD_AGENT_ID,
-    resourceId: DASHBOARD_AGENT_ID,
+    agentId,
+    resourceId: agentId,
     requestContext,
   });
 
@@ -128,11 +136,24 @@ async function streamDeltaDashboard(args: {
 function isPreventCachingRequested(
   input: Parameters<typeof streamAgentEvents>[2],
 ): boolean {
+  return readBooleanForwardedProp(input, 'preventCaching');
+}
+
+function isMultiStepChartsRequested(
+  input: Parameters<typeof streamAgentEvents>[2],
+): boolean {
+  return readBooleanForwardedProp(input, 'multiStepCharts');
+}
+
+function readBooleanForwardedProp(
+  input: Parameters<typeof streamAgentEvents>[2],
+  name: string,
+): boolean {
   const props = input.forwardedProps;
   if (!props || typeof props !== 'object') {
     return false;
   }
-  const value = (props as { preventCaching?: unknown }).preventCaching;
+  const value = (props as Record<string, unknown>)[name];
   if (typeof value === 'boolean') {
     return value;
   }

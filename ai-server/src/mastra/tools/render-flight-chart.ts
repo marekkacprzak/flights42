@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import { buildAndCacheChartUrl } from './render-chart.js';
-import { fetchFlights, type FlightRecord } from './search-flights.js';
+import { flightSchema, type FlightRecord } from './search-flights.js';
 
 interface DelayShareStats {
   total: number;
@@ -58,15 +58,21 @@ function aggregateDelaysPerDay(flights: FlightRecord[]): DelaysPerDayStats {
 export const renderFlightChartTool = createTool({
   id: 'renderFlightChart',
   description: [
-    'One-shot helper for the standard delay-related chart tiles on the',
-    'flight dashboard. Combines `searchFlightsTool` + aggregation +',
-    '`renderChartTool` in a single call so the agent does not need three',
-    'separate LLM round-trips per chart.',
+    'Aggregation + chart helper for the standard delay-related chart tiles',
+    'on the flight dashboard. Takes the flights you already fetched via',
+    '`searchFlightsTool` as input, aggregates them, and renders the chart',
+    'in a single call — so the agent does not need separate `aggregateDataTool`',
+    '+ `renderChartTool` round-trips per chart.',
+    '',
+    'Always call `searchFlightsTool({ from, to })` first and pass the',
+    'returned `flights` array verbatim into this tool. Reuse the same',
+    'array across multiple chart calls for the same route to avoid',
+    'redundant flight fetches.',
     '',
     'Modes:',
-    '- `delayShare`: counts on-time vs. delayed flights between the two cities',
-    '  (optionally restricted to a single ISO date prefix). Best with',
-    '  `chartType: "pie"` or `"bar"` — `labels` are `["On time", "Delayed"]`.',
+    '- `delayShare`: counts on-time vs. delayed flights in the supplied',
+    '  array (optionally restricted to a single ISO date prefix). Best',
+    '  with `chartType: "pie"` or `"bar"` — `labels` are `["On time", "Delayed"]`.',
     '- `delaysPerDay`: groups flights by date and counts on-time vs. delayed per',
     '  day. Best with `chartType: "bar"` (grouped bars per day).',
     '',
@@ -80,8 +86,11 @@ export const renderFlightChartTool = createTool({
     'fall back to `aggregateDataTool` + `renderChartTool`.',
   ].join('\n'),
   inputSchema: z.object({
-    from: z.string().describe('Departure city, e.g. "Graz".'),
-    to: z.string().describe('Destination city, e.g. "Hamburg".'),
+    flights: z
+      .array(flightSchema)
+      .describe(
+        'Flights to aggregate, as returned by `searchFlightsTool({ from, to }).flights`.',
+      ),
     type: z
       .enum(['delayShare', 'delaysPerDay'])
       .describe('Aggregation mode (see tool description).'),
@@ -115,8 +124,7 @@ export const renderFlightChartTool = createTool({
       }),
     ]),
   }),
-  execute: async ({ from, to, type, chartType, date, title }) => {
-    const allFlights = await fetchFlights(from, to);
+  execute: async ({ flights: allFlights, type, chartType, date, title }) => {
     const flights = filterByDate(allFlights, date);
 
     if (type === 'delayShare') {

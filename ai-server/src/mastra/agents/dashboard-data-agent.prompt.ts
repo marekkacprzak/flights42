@@ -60,6 +60,13 @@ use the freshly returned URL as the value of the corresponding
 \`updateDataModel\`. Do not reuse the URL from the Refresh context (it
 points to a chart that may have been garbage-collected).
 
+For \`renderFlightChartTool\`, fetch the route's flights ONCE via
+\`searchFlightsTool({ from, to })\` and pass the resulting \`flights\`
+array into every chart call for that route — the tool no longer
+fetches flights itself. Reuse the same \`flights\` array across both
+\`delayShare\` and \`delaysPerDay\` calls for the same route in one
+refresh.
+
 ---
 
 ## Weather forecasts

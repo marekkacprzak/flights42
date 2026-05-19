@@ -6,6 +6,7 @@ import { PinoLogger } from '@mastra/loggers';
 import { checkinAgent } from './agents/checkin-agent.js';
 import { dashboardAgent } from './agents/dashboard-agent.js';
 import { dashboardDataAgent } from './agents/dashboard-data-agent.js';
+import { dashboardSlowAgent } from './agents/dashboard-slow-agent.js';
 import { reportingAgent } from './agents/reporting-agent.js';
 import { ticketingAgent } from './agents/ticketing-agent.js';
 import { agUiRouteHandler } from './routes/ag-ui-route.js';
@@ -22,6 +23,7 @@ export const mastra = new Mastra({
   agents: {
     ticketingAgent,
     dashboardAgent,
+    dashboardSlowAgent,
     dashboardDataAgent,
     reportingAgent,
     checkinAgent,
