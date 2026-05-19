@@ -1,9 +1,4 @@
-import {
-  EnvironmentInjector,
-  inject,
-  Injectable,
-  runInInjectionContext,
-} from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import {
   type AgUiChatResourceRef,
   agUiResource,
@@ -30,37 +25,34 @@ import { planWidget } from './widgets/plan-widget';
 export class TicketingChatService {
   private readonly config = inject(ConfigService);
   private readonly chatStore = inject(ChatRegistry);
-  private readonly injector = inject(EnvironmentInjector);
   private readonly agentMode = inject(AgentModeService);
 
   private chat: AgUiChatResourceRef | null = null;
 
   public init(): void {
     if (!this.chat) {
-      this.chat = runInInjectionContext(this.injector, () =>
-        agUiResource({
-          url: this.config.agUiUrl,
-          model: this.config.model,
-          useServerMemory: true,
-          forwardedProps: () => ({ agentMode: this.agentMode.mode() }),
-          tools: [
-            findFlightsTool,
-            getLoadedFlightsTool,
-            toggleFlightSelectionTool,
-            getCurrentBasketTool,
-            displayFlightDetailTool,
-            createShowComponentsTool([
-              messageWidget,
-              flightWidget,
-              hotelWidget,
-              planWidget,
-              mcpAppsWidgetComponent,
-              bookFlightActionCard,
-              cancelFlightActionCard,
-            ]),
-          ],
-        }),
-      );
+      this.chat = agUiResource({
+        url: this.config.agUiUrl,
+        model: this.config.model,
+        useServerMemory: true,
+        forwardedProps: () => ({ agentMode: this.agentMode.mode() }),
+        tools: [
+          findFlightsTool,
+          getLoadedFlightsTool,
+          toggleFlightSelectionTool,
+          getCurrentBasketTool,
+          displayFlightDetailTool,
+          createShowComponentsTool([
+            messageWidget,
+            flightWidget,
+            hotelWidget,
+            planWidget,
+            mcpAppsWidgetComponent,
+            bookFlightActionCard,
+            cancelFlightActionCard,
+          ]),
+        ],
+      });
     }
     this.chatStore.setChat(this.chat);
   }
