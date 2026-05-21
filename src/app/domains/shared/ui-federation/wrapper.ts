@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, ElementRef, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  input,
+} from '@angular/core';
 import { loadRemoteModule } from '@softarc/native-federation-runtime';
 
 export interface WrapperConfig {
@@ -18,6 +25,7 @@ export const initWrapperConfig: WrapperConfig = {
   selector: 'app-wrapper',
   imports: [CommonModule],
   templateUrl: './wrapper.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./wrapper.css'],
 })
 export class Wrapper {
