@@ -1200,3 +1200,19 @@ td.error-col app-validation-errors-pane {
     transform: rotate(360deg);
   }
 }
+
+/* ══════════════════════════════════════════
+   6. Signal Forms
+   ══════════════════════════════════════════ */
+
+input.ng-valid {
+  border-left: 3px solid darkseagreen;
+}
+
+input.ng-invalid.ng-dirty {
+  border-left: 3px solid var(--color-error);
+}
+
+input.ng-pending {
+  border-left: 3px solid var(--color-border);
+}

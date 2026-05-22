@@ -4,7 +4,11 @@ import {
   computed,
   input,
 } from '@angular/core';
-import { MinValidationError, ValidationError } from '@angular/forms/signals';
+import {
+  MinLengthValidationError,
+  MinValidationError,
+  ValidationError,
+} from '@angular/forms/signals';
 
 @Component({
   selector: 'app-validation-errors-pane',
@@ -46,6 +50,8 @@ function toMessage(error: ValidationError): string {
       return 'Roundtrips are not supported!';
     case 'min':
       return `Minimum amount: ${(error as MinValidationError).min}`;
+    case 'minLength':
+      return `Please enter at least ${(error as MinLengthValidationError).minLength} characters!`;
     default:
       return error.kind ?? 'Validation Error';
   }
