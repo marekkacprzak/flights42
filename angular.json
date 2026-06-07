@@ -82,12 +82,19 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "browsers": ["Chromium"]
+            "browsers": ["WebKit"]
           },
           "configurations": {
             "ci": {
               "watch": false,
-              "browsers": ["ChromiumHeadless"]
+              "browsers": ["WebKitHeadless"]
+            },
+            "flight-search": {
+              "watch": false,
+              "browsers": ["WebKit"],
+              "include": [
+                "src/app/domains/ticketing/feature-booking/flight-search/flight-search.spec.ts"
+              ]
             }
           }
         },

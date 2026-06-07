@@ -11,7 +11,7 @@ export class DelayStepper implements FormValueControl<number> {
   readonly value = model(0);
 
   readonly disabled = input(false);
-  readonly errors = input<readonly ValidationError.WithOptionalField[]>([]);
+  readonly errors = input<readonly ValidationError.WithOptionalFieldTree[]>([]);
 
   constructor() {
     effect(() => {

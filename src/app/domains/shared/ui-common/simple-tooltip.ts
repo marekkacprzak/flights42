@@ -54,7 +54,9 @@ export class SimpleTooltip {
   }
 
   private updatePosition(tooltipElement: HTMLElement) {
-    const rect = this.host.nativeElement.getBoundingClientRect();
+    const rect = (
+      this.host.nativeElement as HTMLElement
+    ).getBoundingClientRect();
     tooltipElement.style.left = `${rect.left + rect.width / 2}px`;
     tooltipElement.style.top = `${rect.top - 8}px`;
     tooltipElement.style.transform = 'translate(-50%, -100%)';

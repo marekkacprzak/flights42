@@ -9,7 +9,10 @@
     "test": "ng test",
     "lint": "ng lint",
     "format": "prettier --write \"**/*.{ts,html,scss,css,json,md}\"",
-    "prepare": "husky"
+    "sheriff": "sheriff list src/main.ts",
+    "prepare": "husky",
+    "vitest:run": "vitest run",
+    "vitest:single": "vitest run --threads=false --browser webkit src/app/domains/ticketing/feature-booking/flight-search/flight-search.spec.ts -t \"searches for flights when from and to are given\" --setup vitest.setup.ts"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"

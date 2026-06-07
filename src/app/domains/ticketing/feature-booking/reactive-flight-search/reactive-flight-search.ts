@@ -33,7 +33,10 @@ export class ReactiveFlightSearch {
   //   to: this.to()
   // }));
 
-  protected readonly filter = delegatedSignal(
+  protected readonly filter = delegatedSignal<{
+    from: string;
+    to: string;
+  }>(
     () => ({
       from: this.from(),
       to: this.to(),

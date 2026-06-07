@@ -28,6 +28,7 @@ import { DemoDialog } from './demo-dialog';
     TableField,
     DatePipe,
     DataTable,
+    // DialogOutlet
   ],
   templateUrl: './about.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

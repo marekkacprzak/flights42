@@ -1,6 +1,7 @@
 <h1>Passenger Edit</h1>
 
 @if (passenger().id !== 0) {
+  <div>me: {{ pas }}</div>
   @if (passengerForm().invalid()) {
     <div>{{ passengerForm().errorSummary() | json }}</div>
   }

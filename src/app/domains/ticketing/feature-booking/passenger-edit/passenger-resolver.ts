@@ -1,4 +1,4 @@
-import { inject } from '@angular/core';
+import { inject, ResourceStatus } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import {
   ActivatedRouteSnapshot,
@@ -27,7 +27,7 @@ export const passengerResolver: ResolveFn<unknown> = (
   passengerStore.setPassengerId(+id);
 
   return toObservable(passengerStore.passengerStatus).pipe(
-    filter((status) => status !== 'loading'),
+    filter((status: ResourceStatus) => status !== 'loading'),
     take(1),
     // delay(2000)
   );

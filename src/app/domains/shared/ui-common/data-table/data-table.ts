@@ -24,7 +24,10 @@ import { TableField } from './table-field';
               <ng-container
                 *ngTemplateOutlet="
                   field.templateRef;
-                  context: { $implicit: row[field.propName()] }
+                  context: {
+                    $implicit: row[field.propName()],
+                    MyInfo: 'Start From',
+                  }
                 "></ng-container>
             </td>
           }

@@ -7,8 +7,10 @@ import {
   input,
   linkedSignal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { form, FormField, submit } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
+import { map } from 'rxjs';
 
 import { FormComponent } from '../../../shared/util-common/exit.guard';
 import { extractError } from '../../../shared/util-common/extract-error';
@@ -42,6 +44,10 @@ export class PassengerEdit implements FormComponent {
   protected readonly isDisabled = computed(
     () => this.passengerForm().invalid() || this.isPending(),
   );
+
+  public pas = toSignal(
+    this.route.data.pipe(map((data) => data['passenger'])),
+  )();
 
   constructor() {
     this.route.paramMap.subscribe((paramsMap) => {

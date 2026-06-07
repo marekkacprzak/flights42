@@ -30,13 +30,11 @@
 
 <!-- 
 <app-dialog-outlet /> 
--->
+ -->
 
-<!-- 
 <button (click)="cww.handleClick(true)">
   Delete without asking questions!
-</button> 
--->
+</button>
 
 <p>&nbsp;</p>
 
@@ -58,7 +56,7 @@
 </div>
 
 <ng-template #tmpl let-title let-body="text">
-  <div class="tooltip">
+  <div>
     <h4>{{ title }}</h4>
     <p>
       {{ body }}
@@ -72,8 +70,14 @@
   <div *appTableField="let data; provide: 'id'; title: 'Flight Id'">
     {{ data }}
   </div>
-  <div *appTableField="let data; provide: 'from'; title: 'From'">
-    {{ data }}
+  <div
+    *appTableField="
+      let data;
+      let myInfo = MyInfo;
+      provide: 'from';
+      title: 'From'
+    ">
+    {{ data }} {{ myInfo }}
   </div>
   <div *appTableField="let data; provide: 'to'; title: 'To'">{{ data }}</div>
   <div *appTableField="let data; provide: 'date'; title: 'Departure Date'">

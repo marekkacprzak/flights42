@@ -8,6 +8,7 @@ import { AdvancedFlightEdit } from './feature-booking/advanced-flight-edit/advan
 import { BookingNavigation } from './feature-booking/booking-navigation';
 import { FlightEdit } from './feature-booking/flight-edit/flight-edit';
 import { FlightSearch } from './feature-booking/flight-search/flight-search';
+import { FlightStore } from './feature-booking/flight-search/flight-store';
 // import { FlightStore } from './feature-booking/flight-search/flight-store';
 import { PassengerEdit } from './feature-booking/passenger-edit/passenger-edit';
 import { passengerResolver } from './feature-booking/passenger-edit/passenger-resolver';
@@ -43,6 +44,7 @@ export const bookingRoutes: Routes = [
       {
         path: 'reactive-flight-search',
         component: ReactiveFlightSearch,
+        providers: [FlightStore],
       },
       {
         path: 'flight-edit/:id',

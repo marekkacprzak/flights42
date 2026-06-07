@@ -1,3 +1,6 @@
+// Ensure JIT compiler is available for tests that require partially compiled libraries
+import '@angular/compiler';
+
 import {
   HttpTestingController,
   provideHttpClientTesting,
@@ -7,7 +10,8 @@ import { provideRouter } from '@angular/router';
 import { page } from 'vitest/browser';
 
 import { createTestFlight } from '../../../../testing/create-test-flight';
-import { provideTestConfig } from '../../../../testing/provide-test-config';
+//import { provideTestConfig } from '../../../../testing/provide-test-config';
+import { ConfigService } from '../../../shared/util-common/config-service';
 import { FlightSearch } from './flight-search';
 import { FlightStore } from './flight-store';
 
@@ -22,7 +26,8 @@ describe('flight-search', () => {
       providers: [
         provideRouter([]),
         provideHttpClientTesting(),
-        provideTestConfig(),
+        { provide: ConfigService, useValue: { baseUrl: '', model: '' } },
+        //provideTestConfig(),
       ],
     }).compileComponents();
 
@@ -85,11 +90,17 @@ describe('flight-search', () => {
       ctrl.expectOne('/flight?from=Paris&to=London'),
     );
 
-    request.flush([
-      createTestFlight(1),
-      createTestFlight(2),
-      createTestFlight(3),
-    ]);
+    // simulate network delay of 2 seconds before flushing response
+    await new Promise<void>((resolve) =>
+      setTimeout(() => {
+        request.flush([
+          createTestFlight(1),
+          createTestFlight(2),
+          createTestFlight(3),
+        ]);
+        resolve();
+      }, 2000),
+    );
 
     const headings = page.getByRole('heading', {
       name: 'Paris - London',
@@ -97,8 +108,11 @@ describe('flight-search', () => {
 
     await expect.element(headings).toHaveLength(3);
 
-    expect(flightStore.updateFilter).toBeCalled();
-    expect(flightStore.updateFilter).toBeCalledTimes(1);
-    expect(flightStore.updateFilter).toBeCalledWith('Paris', 'London');
+    expect(flightStore.updateFilter).toHaveBeenCalled();
+    expect(flightStore.updateFilter).toHaveBeenCalledTimes(1);
+    expect(flightStore.updateFilter).toHaveBeenCalledWith('Paris', 'London');
+
+    // wait 2 seconds after test completion (simulate post-response delay / observation)
+    await new Promise<void>((resolve) => setTimeout(resolve, 2000));
   });
 });
