@@ -22,7 +22,7 @@ export const FlightDetailStore = signalStore(
 
   withState({
     flightId: 0,
-    flightValue: undefined as unknown as Partial<Flight> | undefined,
+    flightValue: undefined as unknown as Flight | Partial<Flight> | undefined,
   }),
 
   withProps(() => ({
@@ -67,7 +67,7 @@ export const FlightDetailStore = signalStore(
         flightValue: {
           ...(current ?? {}),
           ...flight,
-        },
+        } as unknown as Flight | (Partial<Flight> & Flight) | undefined,
       });
     },
 

@@ -22,7 +22,10 @@ export const PassengerDetailStore = signalStore(
 
   withState({
     passengerId: 0,
-    passengerValue: undefined as unknown as Partial<Passenger> | undefined,
+    passengerValue: undefined as unknown as
+      | Passenger
+      | Partial<Passenger>
+      | undefined,
   }),
 
   withProps(() => ({
@@ -69,7 +72,10 @@ export const PassengerDetailStore = signalStore(
         passengerValue: {
           ...(current ?? {}),
           ...passenger,
-        },
+        } as unknown as
+          | Passenger
+          | (Partial<Passenger> & Passenger)
+          | undefined,
       });
     },
 
