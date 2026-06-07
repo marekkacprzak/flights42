@@ -22,6 +22,7 @@ export const PassengerDetailStore = signalStore(
 
   withState({
     passengerId: 0,
+    passengerValue: undefined as unknown as Partial<Passenger> | undefined,
   }),
 
   withProps(() => ({
@@ -63,12 +64,13 @@ export const PassengerDetailStore = signalStore(
     }),
 
     updateLocalPassenger(passenger: Partial<Passenger>): void {
-      patchState(store, (state) => ({
+      const current = store.passengerValue() as Partial<Passenger> | undefined;
+      patchState(store, {
         passengerValue: {
-          ...state.passengerValue,
+          ...(current ?? {}),
           ...passenger,
         },
-      }));
+      });
     },
 
     reload(): void {

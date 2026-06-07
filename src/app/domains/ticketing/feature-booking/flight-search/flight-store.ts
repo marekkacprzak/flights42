@@ -37,7 +37,7 @@ export const FlightStore = signalStore(
 
   withComputed((store) => ({
     flightsWithDelays: computed(() =>
-      toFlightsWithDelays(store.flightsValue(), store.delayInMin()),
+      toFlightsWithDelays(store.flightsValue() ?? [], store.delayInMin()),
     ),
   })),
 

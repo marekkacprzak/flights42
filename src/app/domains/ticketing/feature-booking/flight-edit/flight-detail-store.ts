@@ -22,6 +22,7 @@ export const FlightDetailStore = signalStore(
 
   withState({
     flightId: 0,
+    flightValue: undefined as unknown as Partial<Flight> | undefined,
   }),
 
   withProps(() => ({
@@ -61,12 +62,13 @@ export const FlightDetailStore = signalStore(
     }),
 
     updateLocalFlight(flight: Partial<Flight>): void {
-      patchState(store, (state) => ({
+      const current = store.flightValue() as Partial<Flight> | undefined;
+      patchState(store, {
         flightValue: {
-          ...state.flightValue,
+          ...(current ?? {}),
           ...flight,
         },
-      }));
+      });
     },
 
     reload(): void {
