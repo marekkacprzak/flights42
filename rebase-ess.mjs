@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
 
+// ESS lab branch chain. Each starter branch is the solution of the
+// previous lab and the starting point for the next one. Rebasing the
+// chain top-to-bottom propagates changes made to ess-starter (or any
+// earlier branch) downstream through every lab up to ess-solution.
 const tasks = [
-  { branch: 'ENT-chat-starter', base: 'main' },
-  { branch: 'ENT-llm-integration-starter', base: 'main' },
-  { branch: 'ENT-nf-sol', base: 'main' },
-  { branch: 'ENT-nf-starter', base: 'main' },
-  { branch: 'ENT-sheriff-starter', base: 'main' },
-  { branch: 'ENT-signal-forms-starter', base: 'main' },
-  { branch: 'ENT-signal-store-starter', base: 'main' },
-  { branch: 'ENT-signals-solution', base: 'main' },
-  { branch: 'ENT-signals-starter', base: 'ENT-signals-solution' },
-  { branch: 'directives-starter', base: 'main' },
-  { branch: 'comp-starter', base: 'main' },
+  { branch: 'ess-intro-starter', base: 'ess-starter' },
+  { branch: 'ess-signals-starter', base: 'ess-intro-starter' },
+  { branch: 'ess-services-starter', base: 'ess-signals-starter' },
+  { branch: 'ess-pipes-starter', base: 'ess-services-starter' },
+  { branch: 'ess-components-starter', base: 'ess-pipes-starter' },
+  { branch: 'ess-testing-starter', base: 'ess-components-starter' },
+  { branch: 'ess-routing-starter', base: 'ess-testing-starter' },
+  { branch: 'ess-solution', base: 'ess-routing-starter' },
 ];
 
 const args = process.argv.slice(2);
@@ -54,7 +55,9 @@ function parseSkipArgs(argv) {
       continue;
     }
 
-    console.error('❌ --skip benötigt einen Wert (z. B. --skip ENT-nf-sol).');
+    console.error(
+      '❌ --skip benötigt einen Wert (z. B. --skip ess-pipes-starter).',
+    );
     process.exit(1);
   }
   return skips;
