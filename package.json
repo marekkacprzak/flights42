@@ -7,6 +7,11 @@
     "ai-server": "mastra dev --dir ai-server/src/mastra",
     "ai-server:build": "mastra build --dir ai-server/src/mastra",
     "ai-server:start": "mastra start --dir ai-server/src/mastra",
+    "ai-cs-server": "dotnet run --project ai-cs-server --urls http://127.0.0.1:3011",
+    "ai-cs-server:start": "dotnet run --project ai-cs-server --urls http://127.0.0.1:3011",
+    "ai-cs-bff": "tsx watch ai-cs-bff/src/server.ts",
+    "ai-cs-bff:start": "tsx ai-cs-bff/src/server.ts",
+    "ai-cs-mcp-server": "dotnet run --project ai-cs-mcp-server --urls http://127.0.0.1:3002",
     "mcp-server": "concurrently \"npm run mcp-server:app:watch\" \"tsx watch mcp-server/src/server.ts\"",
     "mcp-server:app:build": "vite build --config mcp-server/vite.config.ts",
     "mcp-server:app:watch": "vite build --config mcp-server/vite.config.ts --watch",
@@ -30,7 +35,10 @@
     "mcp-apps-demo": "vite --config mcp-apps-demo/vite.config.ts --open /host.html",
     "mcp-apps-demo:build": "vite build --config mcp-apps-demo/vite.config.ts",
     "voice-demo": "vite voice-demo",
-    "prepare": "husky"
+    "prepare": "husky",
+    "ai-cs": "concurrently \"pnpm ai-cs-server\" \"pnpm ai-cs-bff\"",
+    "aspire-dashboard": "docker run --rm -it -p 18888:18888 -p 4317:18889 --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:latest",
+    "ai-cs-aspire": "ASPIRE_ALLOW_UNSECURED_TRANSPORT=true dotnet run --project ai-cs-aspire/AppHost --launch-profile http"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"
@@ -49,7 +57,7 @@
     ]
   },
   "private": true,
-  "packageManager": "pnpm@8",
+  "packageManager": "pnpm@10.32.0",
   "overrides": {
     "rxjs": "$rxjs",
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -80,6 +88,7 @@
     "@angular/platform-browser": "^21.2.17",
     "@angular/router": "^21.2.17",
     "@copilotkit/angular": "0.3.0",
+    "@copilotkit/core": "^1.70.1",
     "@mastra/client-js": "^1.11.2",
     "@mastra/core": "^1.24.1",
     "@mastra/libsql": "^1.7.3",
@@ -101,7 +110,8 @@
     "quickjs-emscripten": "^0.32.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@angular/build": "^21.2.16",

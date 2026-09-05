@@ -11,6 +11,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideCopilotKit({
+      defaultToolRendering: true,
       agents: {
         weatherAgent: new HttpAgent({ url: chatUrl }),
       },

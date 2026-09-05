@@ -5,9 +5,11 @@
 - [Providing API Key and Selecting Model](#providing-api-key-and-selecting-model)
   - [Starting and Running the Example](#starting-and-running-the-example)
   - [Trying out](#trying-out)
+- [.NET + BFF stack (ai-cs-\*)](#net--bff-stack-ai-cs-)
 - [Mini-Applications](#mini-applications)
   - [AG-UI SDK Demo (Chapter 2)](#ag-ui-sdk-demo-chapter-2)
   - [Mastra + AG-UI Demo (Chapter 2)](#mastra--ag-ui-demo-chapter-2)
+  - [.NET Agent Framework Demo (ai-cs-demo)](#net-agent-framework-demo-ai-cs-demo)
   - [A2UI Demo (Chapter 3)](#a2ui-demo-chapter-3)
   - [MCP Apps Demo (Chapter 4)](#mcp-apps-demo-chapter-4)
 
@@ -27,16 +29,16 @@ set OPENAI_API_KEY=...
 
 ### Starting and Running the Example
 
-After `npm install`, you can start the MCP Server
+After `pnpm install`, you can start the MCP Server
 
 ```bash
-npm run mcp-server
+pnpm mcp-server
 ```
 
 Start the Backend:
 
 ```bash
-npm run ai-server
+pnpm ai-server
 ```
 
 In a further terminal, start the client:
@@ -44,6 +46,39 @@ In a further terminal, start the client:
 ```bash
 ng serve -o
 ```
+
+## .NET + BFF stack (ai-cs-\*)
+
+Alternative stack: Angular talks to the public BFF entry on `:3001`, which fronts the internal .NET AG-UI host on `:3011` and wires MCP Apps + QuickJS.
+
+```
+Angular -> ai-cs-bff :3001 (public) -> ai-cs-server :3011 (internal)
+             |-> mcp-server :3002 Streamable HTTP
+             |-> QuickJS /internal/execute-javascript
+```
+
+Normal setup: browser/`ConfigService` use `:3001`; .NET listens on `:3011` behind the BFF. Plan tools emit full-plan `STATE_SNAPSHOT`; `renderA2uiTool` / `renderDashboard` emit `a2ui-surface` `ACTIVITY_SNAPSHOT` from the .NET host through the BFF.
+
+Run (separate terminals, from the repo root), with **pnpm**:
+
+```bash
+pnpm mcp-server
+pnpm ai-cs-server
+pnpm ai-cs-bff
+ng serve -o
+```
+
+Or start .NET + BFF together: `pnpm ai-cs`.
+
+Preferred orchestrated path: `pnpm ai-cs-aspire` (AppHost + Dashboard). See `ai-cs-aspire/README.md`.
+
+Defaults target **LM Studio** (`LLM_ENDPOINT`, `OPENAI_API_KEY=lm-studio`, `OPENAI_CHAT_MODEL` in `ai-cs-server/appsettings.json`). Override those if you use a cloud OpenAI-compatible endpoint.
+
+More detail:
+
+- [ai-cs-bff/README.md](ai-cs-bff/README.md)
+- [ai-cs-server/README.md](ai-cs-server/README.md)
+- [ai-cs-mcp-server/README.md](ai-cs-mcp-server/README.md) (optional .NET MCP alternate for `MCP_URL`)
 
 ### Trying out
 
@@ -70,7 +105,7 @@ Deliberately without HTTP — the client talks to the agent in-process, so the
 focus stays on the messages:
 
 ```bash
-npm run ag-ui-simple:client
+pnpm ag-ui-simple:client
 ```
 
 A second agent demonstrates client-side tools: it requests the client tool
@@ -78,7 +113,7 @@ A second agent demonstrates client-side tools: it requests the client tool
 back the tool result:
 
 ```bash
-npm run ag-ui-simple:client-tools
+pnpm ag-ui-simple:client-tools
 ```
 
 No API key and no server needed — the agents emit prepared events. HTTP and
@@ -90,14 +125,24 @@ A real Mastra agent with a weather tool behind an AG-UI endpoint, plus a
 command-line client. Needs an API key:
 
 ```bash
-npm run ai-demo-server
-npm run ai-demo-client          # add -- --details to log every AG-UI event
+pnpm ai-demo-server
+pnpm ai-demo-client          # add -- --details to log every AG-UI event
 ```
 
 The matching minimal Angular client with CopilotKit:
 
 ```bash
-npm run simple-client
+pnpm simple-client
+```
+
+### .NET Agent Framework Demo (ai-cs-demo)
+
+Minimal Microsoft Agent Framework + AG-UI demo (server + CLI client), analogous
+to the Mastra ai-demo:
+
+```bash
+pnpm ai-cs-demo-server
+pnpm ai-cs-demo-client
 ```
 
 ### A2UI Demo (Chapter 3)
@@ -113,5 +158,5 @@ ng serve a2ui-demo
 A VanillaJS host and app communicating over the MCP Apps protocol:
 
 ```bash
-npm run mcp-apps-demo
+pnpm mcp-apps-demo
 ```

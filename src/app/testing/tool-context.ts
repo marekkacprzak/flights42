@@ -16,6 +16,8 @@ export function makeToolContext(
       type: 'function',
       function: { name, arguments: JSON.stringify(args) },
     },
-    agent: new HttpAgent({ url: 'http://mock.invalid/never-called' }),
+    agent: new HttpAgent({
+      url: 'http://mock.invalid/never-called',
+    }) as unknown as FrontendToolHandlerContext['agent'],
   };
 }

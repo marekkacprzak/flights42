@@ -1,0 +1,4 @@
+flights42.db
+bin/
+obj/
+*.user
