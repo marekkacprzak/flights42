@@ -62,3 +62,6 @@ libs/feature-flags/*.js
 
 agent/src/mastra/public
 
+**/bin/
+**/obj/
+
