@@ -1,0 +1,8 @@
+{
+  "name": "ai-cs-demo-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --watch --import tsx ./index.ts"
+  }
+}

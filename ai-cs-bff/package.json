@@ -1,0 +1,8 @@
+{
+  "name": "ai-cs-bff",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx watch ./src/server.ts"
+  }
+}

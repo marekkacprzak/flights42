@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ai-cs-demo/client/AiCsDemo.Client.esproj" />
+  <Project Path="ai-cs-demo/server/AiCsDemo.Server.csproj" />
+</Solution>

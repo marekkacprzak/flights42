@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ai-cs-bff/ai-cs-bff.esproj" />
+  <Project Path="ai-cs-mcp-server/AiCsMcpServer.csproj" />
+  <Project Path="ai-cs-server/AiCsServer.csproj" />
+  <Project Path="ai-cs-aspire/AppHost/AiCs.AppHost.csproj" />
+  <Project Path="ai-cs-aspire/ServiceDefaults/AiCs.ServiceDefaults.csproj" />
+</Solution>

@@ -1,13 +1,11 @@
 using System.ClientModel;
 using System.Diagnostics;
-using AGUI.Server;
 using AiCsServer.Agents;
 using AiCsServer.Data;
 using AiCsServer.Infrastructure;
 using AiCsServer.Tools;
 using AiCsServer.Routes;
 using AiCsServer.Workflows;
-using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
 using OpenAI;
 
@@ -113,8 +111,8 @@ app.MapGet("/health", () => Results.Json(new
     publicUrl = PublicUrl.Base,
 }));
 
-string? otelEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+var otelEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                   ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 Console.WriteLine($"ai-cs-server listening; backend={LibSqlDatabase.Backend}; db={LibSqlDatabase.DbPath}; UseMcp={FeatureFlags.UseMcp}; UseMcpApps={FeatureFlags.UseMcpApps}; UseApproval={FeatureFlags.UseApproval}; OTLP={otelEndpoint ?? "(unset)"}");
 
 app.Run();

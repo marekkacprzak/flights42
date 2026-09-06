@@ -1,8 +1,6 @@
 using AiCsMcpServer;
-using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Extensions.Apps;
 using ModelContextProtocol.Protocol;
-using ModelContextProtocol.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
