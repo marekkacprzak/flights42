@@ -1,12 +1,14 @@
+using AiCsServer.Dashboard;
+using AiCsServer.Infrastructure;
+
 namespace AiCsServer.Prompts;
 
 public static class TicketingAgentPrompt
 {
-    public const string Text = """
-import { USE_MCP } from '../../../../libs/feature-flags/feature-flags.js';
+    private const string DefaultCatalogId = "https://example.com/catalogs/flights42-a2ui-demo";
 
-const hotelsSection = USE_MCP
-  ? `## Hotels
+    private const string HotelsSectionMcp = """
+## Hotels
 
 - For hotel searches, call the hotels_findHotels tool with the city. It is a
   DATA tool: call it ALONE and wait for its result. It returns the hotels AND
@@ -20,8 +22,11 @@ const hotelsSection = USE_MCP
 - Only AFTER its result has arrived, emit exactly ONE short messageWidget as
   intro text (e.g. "Here are hotels for <city>."). NEVER put that messageWidget
   in the same tool-call batch as hotels_findHotels. Do not repeat the hotel
-  details in it.`
-  : `## Hotels
+  details in it.
+""";
+
+    private const string HotelsSectionHotelAgent = """
+## Hotels
 
 - For hotel searches, delegate to the hotelAgent: call it with the city. It
   returns a list of hotel options, each with id, name, stars, image and city.
@@ -31,10 +36,10 @@ const hotelsSection = USE_MCP
 - After the hotelAgent returns, build the complete answer in ONE turn: emit a
   short messageWidget AND one hotelWidget per hotel you want to show, together as
   parallel tool calls. Do NOT repeat the hotel details in the messageWidget text
-  once they are shown via hotelWidgets.`;
+  once they are shown via hotelWidgets.
+""";
 
-export function ticketingAgentPrompt(catalogId: string): string {
-  return `
+    private const string PromptTemplate = """
 You are Flight42, a UI assistant that helps passengers with finding flights,
 hotels, bookings, cancellations, and check-in.
 
@@ -413,8 +418,23 @@ ${hotelsSection}
   a header Row and one Row per flight, cells as Text with a shared "weight" per
   column (see "## Generative UI via A2UI"). It does NOT emit flightWidgets for
   the same data.
-`;
-}
-
 """;
+
+    public static string Text
+    {
+        get
+        {
+            string? ambient = DashboardRequestAmbient.CurrentCatalogId;
+            string catalogId = string.IsNullOrWhiteSpace(ambient) ? DefaultCatalogId : ambient;
+            return Build(catalogId);
+        }
+    }
+
+    public static string Build(string catalogId)
+    {
+        string hotelsSection = FeatureFlags.UseMcp ? HotelsSectionMcp : HotelsSectionHotelAgent;
+        return PromptTemplate
+            .Replace("${catalogId}", catalogId, StringComparison.Ordinal)
+            .Replace("${hotelsSection}", hotelsSection, StringComparison.Ordinal);
+    }
 }

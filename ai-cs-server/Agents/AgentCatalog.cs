@@ -171,7 +171,7 @@ public static class AgentCatalog
             AIFunctionFactory.Create(RenderA2uiTool.RenderA2ui, name: RenderA2uiTool.ToolName),
         ];
 
-        if (!FeatureFlags.UseMcpApps)
+        if (!FeatureFlags.UseMcp)
         {
             AIAgent hotelAgent = services.GetRequiredKeyedService<AIAgent>("hotelAgent");
             tools.Add(hotelAgent.AsAIFunction());

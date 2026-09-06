@@ -8,6 +8,8 @@ public static class FeatureFlags
 
     public static bool UseApproval { get; private set; } = true;
 
+    public static bool UseActionCards { get; private set; } = true;
+
     public static string McpHotelsUrl { get; private set; } = "http://127.0.0.1:3002/mcp";
 
     public static void Configure(IConfiguration configuration)
@@ -32,6 +34,15 @@ public static class FeatureFlags
             useApproval = approvalEnvFlag;
         }
         UseApproval = useApproval ?? true;
+
+        bool? useActionCards = configuration.GetValue<bool?>("USE_ACTION_CARDS")
+            ?? configuration.GetValue<bool?>("UseActionCards");
+        string? useActionCardsEnv = Environment.GetEnvironmentVariable("USE_ACTION_CARDS");
+        if (bool.TryParse(useActionCardsEnv, out bool actionCardsEnvFlag))
+        {
+            useActionCards = actionCardsEnvFlag;
+        }
+        UseActionCards = useActionCards ?? true;
 
         string? url = configuration["Mcp:HotelsUrl"]
             ?? configuration["MCP_HOTELS_URL"]

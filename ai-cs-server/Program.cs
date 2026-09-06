@@ -108,11 +108,12 @@ app.MapGet("/health", () => Results.Json(new
     useMcp = FeatureFlags.UseMcp,
     useMcpApps = FeatureFlags.UseMcpApps,
     useApproval = FeatureFlags.UseApproval,
+    useActionCards = FeatureFlags.UseActionCards,
     publicUrl = PublicUrl.Base,
 }));
 
 var otelEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
                    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-Console.WriteLine($"ai-cs-server listening; backend={LibSqlDatabase.Backend}; db={LibSqlDatabase.DbPath}; UseMcp={FeatureFlags.UseMcp}; UseMcpApps={FeatureFlags.UseMcpApps}; UseApproval={FeatureFlags.UseApproval}; OTLP={otelEndpoint ?? "(unset)"}");
+Console.WriteLine($"ai-cs-server listening; backend={LibSqlDatabase.Backend}; db={LibSqlDatabase.DbPath}; UseMcp={FeatureFlags.UseMcp}; UseMcpApps={FeatureFlags.UseMcpApps}; UseApproval={FeatureFlags.UseApproval}; UseActionCards={FeatureFlags.UseActionCards}; OTLP={otelEndpoint ?? "(unset)"}");
 
 app.Run();
