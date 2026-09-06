@@ -2,7 +2,7 @@ import { OpenAILanguageModelResponsesOptions } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 
-import { modelAdvancedTasks } from '../config.js';
+import { modelAdvancedTasks, useLmStudio } from '../config.js';
 import { findHotelsTool } from '../tools/find-hotels.js';
 import {
   addFlightToPlanTool,
@@ -32,12 +32,16 @@ export const travelRefinementAgent = new Agent({
     addHotelToPlanTool,
     removeHotelFromPlanTool,
   },
-  defaultOptions: {
-    providerOptions: {
-      openai: {
-        reasoningEffort: 'high',
-      } as OpenAILanguageModelResponsesOptions,
-    },
-  },
+  ...(useLmStudio
+    ? {}
+    : {
+        defaultOptions: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            } as OpenAILanguageModelResponsesOptions,
+          },
+        },
+      }),
   memory: new Memory(),
 });

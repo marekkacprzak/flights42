@@ -1,7 +1,7 @@
 import { OpenAILanguageModelResponsesOptions } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 
-import { model } from '../config.js';
+import { model, useLmStudio } from '../config.js';
 import { packageTourWorkflow } from '../workflows/package-tour-workflow.js';
 import { travelPlannerAgentPrompt } from './travel-planner-agent.prompt.js';
 
@@ -11,11 +11,15 @@ export const travelPlannerAgent = new Agent({
   instructions: travelPlannerAgentPrompt,
   model,
   workflows: { packageTourWorkflow },
-  defaultOptions: {
-    providerOptions: {
-      openai: {
-        reasoningEffort: 'medium',
-      } as OpenAILanguageModelResponsesOptions,
-    },
-  },
+  ...(useLmStudio
+    ? {}
+    : {
+        defaultOptions: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'medium',
+            } as OpenAILanguageModelResponsesOptions,
+          },
+        },
+      }),
 });
