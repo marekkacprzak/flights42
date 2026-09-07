@@ -32,6 +32,7 @@
     "ai-cs-demo-server": "dotnet run --project ai-cs-demo/server --urls http://localhost:4555",
     "ai-cs-demo-client": "node --watch --import tsx ai-cs-demo/client/index.ts",
     "simple-client": "ng serve simple-client",
+    "a2ui-demo": "ng serve a2ui-demo",
     "mcp-apps-demo": "vite --config mcp-apps-demo/vite.config.ts --open /host.html",
     "mcp-apps-demo:build": "vite build --config mcp-apps-demo/vite.config.ts",
     "voice-demo": "vite voice-demo",

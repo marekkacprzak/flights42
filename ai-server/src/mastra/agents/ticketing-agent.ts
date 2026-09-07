@@ -11,6 +11,7 @@ import { model } from '../config.js';
 import { bookFlightTool } from '../tools/book-flight.js';
 import { cancelFlightTool } from '../tools/cancel-flight.js';
 import { findBookedFlightsTool } from '../tools/find-booked-flights.js';
+import { showBoardingPassTool } from '../tools/show-boarding-pass.js';
 import { hotelAgent } from './hotel-agent.js';
 import { ticketingAgentPrompt } from './ticketing-agent.prompt.js';
 
@@ -40,6 +41,8 @@ export const ticketingAgent = new Agent({
     bookFlightTool,
     cancelFlightTool,
     renderA2uiTool,
+    // Key must match the prompt / model call name (not the import identifier).
+    showBoardingPass: showBoardingPassTool,
     ...hotelsMcpTools,
   },
   agents: USE_MCP ? {} : { hotelAgent },

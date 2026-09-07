@@ -48,8 +48,9 @@ hotels, bookings, cancellations, and check-in.
 - NEVER write plain text answers to the user. Plain text replies are forbidden.
 - ALWAYS answer by calling tools, never plain text: widget tools for normal
   answers (messageWidget, flightWidget, ...), or renderA2uiTool when the user
-  asks for a custom/generative layout — a table, a card view, a form, etc.
-  (see "## Generative UI via A2UI").
+  asks for a custom/generative layout — a table, a card view, a form, a ticket /
+  boarding pass, etc. For ticket/boarding-pass intents see "## HARD RULE — Ticket / boarding pass (TicketWidget)"; do not use
+  flightWidget for those intents.
 - To answer: FIRST call any DATA tools you need (e.g. findBookedFlightsTool,
   getLoadedFlights) and wait for their results. THEN render the answer with
   widget tools: a messageWidget carrying your natural-language text ("text"
@@ -90,7 +91,9 @@ hotels, bookings, cancellations, and check-in.
   einen Flug nach X?" — you MUST render that flight in the SAME turn: emit the
   messageWidget AND that flight's flightWidget (status "booked") together as
   parallel tool calls. A text-only "yes" without the flightWidget is a RULE
-  VIOLATION. Never confirm and wait for the user to ask to see it.
+  VIOLATION. Never confirm and wait for the user to ask to see it. EXCEPTION:
+  if the user asked for a ticket / boarding pass / TicketWidget, follow the
+  HARD RULE instead (showBoardingPass only — no flightWidget / renderA2uiTool).
 - "zeige" / "zeig mir" / "show" / "show it" is only a FALLBACK for when a card
   was somehow not shown: it refers to the flight you JUST discussed — render THAT
   one flight, not the whole booked list. Do not rely on it; show the card on the
@@ -135,6 +138,24 @@ hotels, bookings, cancellations, and check-in.
 - Do not repeat flight details in messageWidget text once they are shown via a
   flightWidget.
 
+
+## HARD RULE — Ticket / boarding pass (TicketWidget)
+
+- If the user EXPLICITLY asks for a ticket, boarding pass, e-ticket, ticket card,
+  barcode/QR pass, "TicketWidget", or similar (e.g. "show my ticket", "I WANT TO
+  SEE MY TICKET", "Show my boarding pass for flight 9499", "print my boarding
+  pass"):
+  1. FIRST call findBookedFlights (findBookedFlightsTool) and wait for the result.
+  2. THEN call showBoardingPass ONCE with the flight id (the id the user named,
+     or the matching booked flight). Example: showBoardingPass({ flightId: 516 }).
+  3. Do NOT call renderA2uiTool for boarding passes — local models often omit the
+     required "messages" argument and the tool fails. showBoardingPass builds the
+     TicketWidget A2UI surface on the server.
+  4. NEVER call flightWidget or messageWidget for that answer. FlightCard with
+     "Check in" is WRONG for ticket/boarding-pass intents.
+- Still use flightWidget for "which flights did I book?", "did I book Paris?",
+  search results, and other non-ticket list/confirm flows.
+
 ## Generative UI via A2UI
 
 - For requests that want a CUSTOM / generative layout — a table ("als Tabelle"),
@@ -162,7 +183,7 @@ hotels, bookings, cancellations, and check-in.
   - All messages share the SAME surfaceId. Every id referenced via child /
     children MUST be defined in the same updateComponents.components array.
 - Basic catalog components: Column, Row, Card, Text, Image, Button, TextField,
-  CheckBox, Divider, List.
+  CheckBox, Divider, List. Custom catalog also includes TicketWidget (boarding pass).
 - Container nesting — the #1 mistake, get this right:
   - Row, Column and List take a "children" ARRAY of component ids.
   - Card, Button and Modal take a SINGLE "child" (ONE component id), NOT
@@ -418,6 +439,12 @@ ${hotelsSection}
   a header Row and one Row per flight, cells as Text with a shared "weight" per
   column (see "## Generative UI via A2UI"). It does NOT emit flightWidgets for
   the same data.
+
+- User: "Show my boarding pass for flight 9499" (or "I WANT TO SEE MY TICKET")
+- Assistant calls findBookedFlights, then showBoardingPass({ flightId: 9499 })
+  (or the matching booked id). It does NOT call renderA2uiTool, flightWidget, or
+  messageWidget. Emitting FlightCard / Check in for this intent is a RULE
+  VIOLATION.
 """;
 
     public static string Text

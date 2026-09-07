@@ -169,6 +169,7 @@ public static class AgentCatalog
             AIFunctionFactory.Create(FlightTools.BookFlight, name: "bookFlight"),
             AIFunctionFactory.Create(FlightTools.CancelFlight, name: "cancelFlight"),
             AIFunctionFactory.Create(RenderA2uiTool.RenderA2ui, name: RenderA2uiTool.ToolName),
+            AIFunctionFactory.Create(ShowBoardingPassTool.ShowBoardingPassAsync, name: ShowBoardingPassTool.ToolName),
         ];
 
         if (!FeatureFlags.UseMcp)
@@ -195,24 +196,8 @@ public static class AgentCatalog
             ]);
         }
 
-        options = options.MapResult(RenderA2uiTool.ToolName, frc =>
-        {
-            JsonElement result = NormalizeToJsonElement(frc.Result);
-            string surfaceId = TryGetStringProperty(result, "surfaceId") ?? Guid.NewGuid().ToString("N");
-            JsonElement operations = TryGetOperations(result, "messages")
-                ?? JsonSerializer.SerializeToElement(Array.Empty<object>(), JsonOptions);
-            JsonElement content = JsonSerializer.SerializeToElement(new { operations }, JsonOptions);
-            return new BaseEvent[]
-            {
-                new ActivitySnapshotEvent
-                {
-                    MessageId = surfaceId,
-                    ActivityType = "a2ui-surface",
-                    Content = content,
-                    Replace = true,
-                },
-            };
-        });
+        options = options.MapResult(RenderA2uiTool.ToolName, MapA2uiSurfaceResult);
+        options = options.MapResult(ShowBoardingPassTool.ToolName, MapA2uiSurfaceResult);
 
         options = options.MapCall(DashboardTools.RenderDashboardToolName, fcc =>
         {
@@ -259,25 +244,87 @@ public static class AgentCatalog
 
     private static readonly ConcurrentDictionary<string, JsonElement> PendingDashboardArgs = new(StringComparer.Ordinal);
 
+
+    private static BaseEvent[] MapA2uiSurfaceResult(FunctionResultContent frc)
+    {
+        if (!TryNormalizeToJsonElement(frc.Result, out JsonElement result))
+        {
+            return Array.Empty<BaseEvent>();
+        }
+
+        if (result.ValueKind == JsonValueKind.Object &&
+            result.TryGetProperty("ok", out JsonElement ok) &&
+            ok.ValueKind == JsonValueKind.False)
+        {
+            return Array.Empty<BaseEvent>();
+        }
+
+        JsonElement? operations = TryGetOperations(result, "messages")
+            ?? TryGetOperations(result, "operations");
+        if (operations is not JsonElement ops ||
+            ops.ValueKind != JsonValueKind.Array ||
+            ops.GetArrayLength() == 0)
+        {
+            return Array.Empty<BaseEvent>();
+        }
+
+        string surfaceId = TryGetStringProperty(result, "surfaceId") ?? Guid.NewGuid().ToString("N");
+        JsonElement content = JsonSerializer.SerializeToElement(new { operations = ops }, JsonOptions);
+        return
+        [
+            new ActivitySnapshotEvent
+            {
+                MessageId = surfaceId,
+                ActivityType = "a2ui-surface",
+                Content = content,
+                Replace = true,
+            },
+        ];
+    }
+
+    private static bool TryNormalizeToJsonElement(object? result, out JsonElement element)
+    {
+        try
+        {
+            element = NormalizeToJsonElement(result);
+            return element.ValueKind is JsonValueKind.Object or JsonValueKind.Array;
+        }
+        catch (JsonException)
+        {
+            element = default;
+            return false;
+        }
+    }
+
     private static JsonElement NormalizeToJsonElement(object? result)
     {
         switch (result)
         {
-            case JsonElement element when element.ValueKind == JsonValueKind.String:
+            case JsonElement je when je.ValueKind == JsonValueKind.String:
             {
-                string? raw = element.GetString();
+                string? raw = je.GetString();
                 if (string.IsNullOrWhiteSpace(raw))
                 {
                     return JsonSerializer.SerializeToElement(new { }, JsonOptions);
                 }
 
+                if (raw[0] is not ('{' or '['))
+                {
+                    return JsonSerializer.SerializeToElement(new { ok = false, error = raw }, JsonOptions);
+                }
+
                 using JsonDocument doc = JsonDocument.Parse(raw);
                 return doc.RootElement.Clone();
             }
-            case JsonElement element when element.ValueKind == JsonValueKind.Object || element.ValueKind == JsonValueKind.Array:
-                return element;
+            case JsonElement je when je.ValueKind == JsonValueKind.Object || je.ValueKind == JsonValueKind.Array:
+                return je;
             case string text when !string.IsNullOrWhiteSpace(text):
             {
+                if (text[0] is not ('{' or '['))
+                {
+                    return JsonSerializer.SerializeToElement(new { ok = false, error = text }, JsonOptions);
+                }
+
                 using JsonDocument doc = JsonDocument.Parse(text);
                 return doc.RootElement.Clone();
             }
