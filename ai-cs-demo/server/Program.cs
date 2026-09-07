@@ -33,7 +33,7 @@ if (string.IsNullOrWhiteSpace(apiKey))
 var model = builder.Configuration["OPENAI_CHAT_MODEL"];
 if (string.IsNullOrWhiteSpace(model))
 {
-    model = "qwen/qwen3.8-27b";
+    model = "qwen/qwen3-vl-8b";
 }
 
 const string AgentName = "weatherAgent";

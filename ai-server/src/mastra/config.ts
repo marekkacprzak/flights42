@@ -13,7 +13,7 @@ const lmStudio = createOpenAI({
   fetch: lmStudioFetch,
 });
 
-const lmStudioModelId = process.env.OPENAI_CHAT_MODEL ?? 'qwen/qwen3.8-27b';
+const lmStudioModelId = process.env.OPENAI_CHAT_MODEL ?? 'qwen/qwen3-vl-8b';
 
 export const model: MastraModelConfig = useLmStudio
   ? lmStudio.chat(lmStudioModelId)

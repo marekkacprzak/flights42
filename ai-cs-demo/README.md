@@ -2,7 +2,7 @@
 
 Port of ai-demo using Microsoft Agent Framework AG-UI ASP.NET hosting.
 
-Default LLM: LM Studio at http://192.168.8.199:1234/v1, model qwen/qwen3.8-27b.
+Default LLM: LM Studio at http://192.168.8.199:1234/v1, model qwen/qwen3-vl-8b.
 
 ## Run
 

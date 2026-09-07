@@ -48,7 +48,7 @@ dotnet run --project ai-cs-server --urls http://127.0.0.1:3011
 | ------------------- | ------------------------------ |
 | `LLM_ENDPOINT`      | `http://192.168.8.199:1234/v1` |
 | `OPENAI_API_KEY`    | `lm-studio`                    |
-| `OPENAI_CHAT_MODEL` | `qwen/qwen3.8-27b`             |
+| `OPENAI_CHAT_MODEL` | `qwen/qwen3-vl-8b`             |
 
 Override via config or environment for cloud providers. Reasoning tags from some LM Studio models are stripped by `StripLmStudioReasoningHandler`.
 
